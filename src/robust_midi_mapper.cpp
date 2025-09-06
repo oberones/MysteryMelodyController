@@ -3,6 +3,7 @@
 RobustMidiMapper::RobustMidiMapper(RobustInputProcessor& processor, MidiOut& midiOut)
     : processor_(processor)
     , midiOut_(midiOut)
+    , lastBinaryValue(0)
 {
     // Initialize state tracking arrays
     for (int i = 0; i < BUTTON_COUNT; i++) {
@@ -107,6 +108,8 @@ void RobustMidiMapper::processJoystick() {
 }
 
 void RobustMidiMapper::processSwitches() {
+    bool binaryStateChanged = false;
+    
     for (int i = 0; i < SWITCH_COUNT; i++) {
         bool currentState = processor_.getSwitchState(i);
         
@@ -114,7 +117,7 @@ void RobustMidiMapper::processSwitches() {
         if (currentState != lastSwitchStates[i]) {
             uint8_t midiValue = currentState ? 127 : 0;
             
-            // Send CC message for switch state
+            // Send CC message for individual switch state
             midiOut_.sendControlChange(SWITCH_CCS[i], midiValue, MIDI_CHANNEL);
             
             #if DEBUG >= 1
@@ -123,6 +126,35 @@ void RobustMidiMapper::processSwitches() {
             #endif
             
             lastSwitchStates[i] = currentState;
+            
+            // Mark that binary state may have changed (for first 8 switches)
+            if (i < 8) {
+                binaryStateChanged = true;
+            }
+        }
+    }
+    
+    // Process binary representation of first 8 switches
+    if (binaryStateChanged) {
+        uint8_t binaryValue = 0;
+        
+        // Calculate binary representation from first 8 switches
+        for (int i = 0; i < 8 && i < SWITCH_COUNT; i++) {
+            if (processor_.getSwitchState(i)) {
+                binaryValue |= (1 << i);  // Set bit i if switch i is on
+            }
+        }
+        
+        // Send binary CC if value changed
+        if (binaryValue != lastBinaryValue) {
+            midiOut_.sendControlChange(SWITCH_BINARY_CC, binaryValue, MIDI_CHANNEL);
+            
+            #if DEBUG >= 1
+            Serial.printf("MIDI: Switch binary representation -> CC %d = %d (0b%08b)\n", 
+                         SWITCH_BINARY_CC, binaryValue, binaryValue);
+            #endif
+            
+            lastBinaryValue = binaryValue;
         }
     }
 }

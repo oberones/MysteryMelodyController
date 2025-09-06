@@ -84,8 +84,11 @@ constexpr uint8_t JOY_RIGHT_CC = 13;
 
 // MIDI CC mapping for switches
 constexpr uint8_t SWITCH_CCS[] = {
-    20, 21, 22  // CC 20-22 for the 3 switches
+    20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31  // CC 20-31 for the 12 switches
 };
+
+// MIDI CC for binary representation of first 8 switches
+constexpr uint8_t SWITCH_BINARY_CC = 50;
 
 // ===== PORTAL ANIMATION CONFIGURATION =====
 constexpr uint8_t PORTAL_PROGRAM_COUNT = 6;

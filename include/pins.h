@@ -20,7 +20,7 @@ constexpr uint8_t JOYSTICK_RIGHT = 36;
 
 // Switches (12 total)
 constexpr uint8_t SWITCH_PINS[] = {
-    16, 17, 18, 21, 22, 23, 24, 25, 26, 27, 28, 29
+    22, 23, 24, 25, 26, 27, 28, 29, 16, 17, 18, 21
 };
 constexpr uint8_t SWITCH_COUNT = sizeof(SWITCH_PINS) / sizeof(SWITCH_PINS[0]);
 

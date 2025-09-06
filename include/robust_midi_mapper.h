@@ -32,6 +32,7 @@ private:
     bool lastButtonStates[BUTTON_COUNT];
     bool lastSwitchStates[SWITCH_COUNT];
     uint8_t lastPotValues[POT_COUNT];
+    uint8_t lastBinaryValue;  // Track binary representation of first 8 switches
     
     void processButtons();
     void processPots();
