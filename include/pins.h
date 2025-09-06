@@ -32,6 +32,16 @@ constexpr uint8_t POT_PINS[] = {
 };
 constexpr uint8_t POT_COUNT = sizeof(POT_PINS) / sizeof(POT_PINS[0]);
 
+// ===== I2C PINS =====
+// I2C for OLED display (Teensy 4.1 Wire/I2C)
+constexpr uint8_t I2C_SDA_PIN = 18;  // Pin 18 (A4) - SDA
+constexpr uint8_t I2C_SCL_PIN = 19;  // Pin 19 (A5) - SCL
+
+// OLED display configuration
+constexpr uint8_t OLED_WIDTH = 128;
+constexpr uint8_t OLED_HEIGHT = 64;
+constexpr uint8_t OLED_I2C_ADDRESS = 0x3C;  // Common I2C address for SSD1306
+
 // ===== LED OUTPUT PINS =====
 constexpr uint8_t LED_DATA_PIN = 1;  // Pin 1 for LED data
 constexpr uint8_t LED_COUNT = 60;    // Typical infinity portal LED count

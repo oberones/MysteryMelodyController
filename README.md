@@ -10,6 +10,7 @@ This is the Teensy 4.1 firmware for the Mystery Melody Machine project.
 - 6 potentiometers (connected to analog pins)
 - 4-direction joystick (connected to digital pins)
 - 3 switches (connected to digital pins)
+- **OLED Display** (optional): 128x64 I2C SSD1306 OLED for real-time feedback
 
 ## Software Requirements
 
@@ -190,6 +191,10 @@ Heartbeat - ACTIVE (last activity 1240ms ago)    # Every second
 ### Analog Inputs:
 - **Potentiometers**: Pins A0-A3 (4 pots) - A4/A5 reserved for I2C, A6/A7 disabled to avoid noise
 
+### I2C Interface:
+- **SDA**: Pin 18 (A4) - For OLED display
+- **SCL**: Pin 19 (A5) - For OLED display
+
 ### Outputs:
 - **LED Data**: Pin 1 (WS2812B data)
 - **Built-in LED**: Pin 13 (heartbeat)
@@ -210,6 +215,20 @@ Heartbeat - ACTIVE (last activity 1240ms ago)    # Every second
 
 ### Switches (Digital Input, State Change):
 - **Switch 0-2 (Pins 16-18)**: MIDI CC 20-22 on Channel 1, Value 0 (off) or 127 (on)
+
+## OLED Display (Optional)
+
+The firmware includes support for a 128x64 I2C OLED display that provides real-time feedback. See [OLED Display Documentation](docs/OLEDDisplay.md) for detailed setup and usage instructions.
+
+### Quick Setup:
+1. Connect SSD1306 OLED to I2C pins (SDA=18, SCL=19)
+2. Use **Button 0** to cycle through display modes:
+   - **MIDI LOG**: Shows recent MIDI messages with note names
+   - **STATUS**: Shows current input states
+   - **ACTIVITY**: Visual activity indicators  
+   - **INFO**: System performance and uptime
+
+The display enhances debugging and live performance monitoring without affecting real-time MIDI performance.
 
 ## Next Phases
 

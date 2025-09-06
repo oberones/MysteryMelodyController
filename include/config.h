@@ -104,3 +104,13 @@ enum PortalProgram {
 // Portal frame rate (Hz)
 constexpr uint8_t PORTAL_FPS = 60;
 constexpr uint32_t PORTAL_FRAME_INTERVAL_US = 1000000 / PORTAL_FPS;
+
+// ===== OLED DISPLAY CONFIGURATION =====
+// Display update rate (Hz) - keep low to avoid interference with main loop
+constexpr uint8_t OLED_UPDATE_HZ = 20;
+
+// Default display mode on startup
+constexpr uint8_t OLED_DEFAULT_MODE = 0;  // MIDI_LOG mode
+
+// MIDI log settings
+constexpr uint8_t OLED_MIDI_LOG_SIZE = 8;  // Number of MIDI messages to keep in log

@@ -6,11 +6,15 @@
 #include <usb_midi.h>
 #endif
 
+// Forward declaration to avoid circular dependency
+class OledDisplay;
+
 /**
  * @brief MIDI output handler for Phase 1
  * 
  * Sends MIDI messages for raw input events.
  * Conditionally compiled based on USB_MIDI mode.
+ * Supports optional OLED display logging.
  */
 class MidiOut {
 public:
@@ -20,6 +24,12 @@ public:
      * @brief Initialize MIDI output
      */
     void begin();
+    
+    /**
+     * @brief Set OLED display for logging (optional)
+     * @param display Pointer to OledDisplay instance, or nullptr to disable
+     */
+    void setOledDisplay(OledDisplay* display);
     
     /**
      * @brief Send note on message
@@ -46,5 +56,7 @@ public:
     void sendControlChange(uint8_t controller, uint8_t value, uint8_t channel = 1);
     
 private:
+    OledDisplay* oledDisplay;
+    
     void debugMidi(const char* type, uint8_t param1, uint8_t param2, uint8_t channel);
 };

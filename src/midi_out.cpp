@@ -1,6 +1,7 @@
 #include "midi_out.h"
+#include "oled_display.h"
 
-MidiOut::MidiOut() {
+MidiOut::MidiOut() : oledDisplay(nullptr) {
     // Constructor
 }
 
@@ -14,6 +15,10 @@ void MidiOut::begin() {
 #endif
 }
 
+void MidiOut::setOledDisplay(OledDisplay* display) {
+    oledDisplay = display;
+}
+
 void MidiOut::sendNoteOn(uint8_t note, uint8_t velocity, uint8_t channel) {
 #ifdef USB_MIDI
     usbMIDI.sendNoteOn(note, velocity, channel);
@@ -21,6 +26,11 @@ void MidiOut::sendNoteOn(uint8_t note, uint8_t velocity, uint8_t channel) {
 #else
     debugMidi("NoteOn", note, velocity, channel);
 #endif
+    
+    // Log to OLED if available
+    if (oledDisplay) {
+        oledDisplay->logMidiNoteOn(note, velocity, channel);
+    }
 }
 
 void MidiOut::sendNoteOff(uint8_t note, uint8_t velocity, uint8_t channel) {
@@ -30,6 +40,11 @@ void MidiOut::sendNoteOff(uint8_t note, uint8_t velocity, uint8_t channel) {
 #else
     debugMidi("NoteOff", note, velocity, channel);
 #endif
+    
+    // Log to OLED if available
+    if (oledDisplay) {
+        oledDisplay->logMidiNoteOff(note, velocity, channel);
+    }
 }
 
 void MidiOut::sendControlChange(uint8_t controller, uint8_t value, uint8_t channel) {
@@ -39,6 +54,11 @@ void MidiOut::sendControlChange(uint8_t controller, uint8_t value, uint8_t chann
 #else
     debugMidi("CC", controller, value, channel);
 #endif
+    
+    // Log to OLED if available
+    if (oledDisplay) {
+        oledDisplay->logMidiCC(controller, value, channel);
+    }
 }
 
 void MidiOut::debugMidi(const char* type, uint8_t param1, uint8_t param2, uint8_t channel) {
