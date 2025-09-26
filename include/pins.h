@@ -44,7 +44,7 @@ constexpr uint8_t OLED_I2C_ADDRESS = 0x3C;  // Common I2C address for SSD1306
 
 // ===== LED OUTPUT PINS =====
 constexpr uint8_t LED_DATA_PIN = 1;  // Pin 1 for LED data
-constexpr uint8_t LED_COUNT = 60;    // Typical infinity portal LED count
+constexpr uint8_t LED_COUNT = 45;    // Circular infinity portal LED count
 
 // ===== BUILT-IN PINS =====
 constexpr uint8_t BUILTIN_LED_PIN = 13;  // Teensy 4.1 built-in LED
