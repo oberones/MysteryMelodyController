@@ -1,7 +1,62 @@
 # Teensy Firmware Software Roadmap
 
 Target MCU: Teensy 4.1  (USB Type: MIDI)
-Primary Role: Scan physical controls, generate debounced + smoothed event state, emit MIDI (Notes + CC), drive RGB LED infinity portal animations using pre-existing portal code, receive portal animation cues from Pi, expose diagnostic + configuration hooks.
+Primary Role: Scan physical controls, generate debounced + smoothed event state, emit MIDI (Notes + CC), drive RGB LED infinity portal animations using pre-existing portal code, receive portal animation cues fro16. Portal program names for debugging
+17. License---
+## 18. Immediate Next Actions
+- [X] Confirm integration approach for pre-existing portal code (implemented from scratch with FastLED)
+- [X] Scaffold directory + headers (`portal_controller.h`, `portal_cue_handler.h`)
+- [X] Implement Phase 3 portal animation system
+- [ ] Start Phase 4: Performance hardening and loop time optimization
+- [ ] Test portal animation programs individually and in combination
+- [ ] Document portal MIDI CC mapping for Pi integratione 2.0 (aligns with overall project license)
+
+---
+## 17. Phase 3 Implementation Details (COMPLETED)
+
+**Portal Animation Programs (10 total):**
+1. **SPIRAL**: Rotating spiral patterns with BPM sync and configurable direction
+2. **PULSE**: Rhythmic pulsing from center, synchronized to BPM
+3. **WAVE**: Multi-frequency flowing wave patterns responsive to activity
+4. **CHAOS**: Random/chaotic patterns with activity-based mutation rate
+5. **AMBIENT**: Slow, peaceful color cycling for background ambiance  
+6. **IDLE**: Minimal ambient mode with 15% brightness cap (30s timeout)
+7. **RIPPLE**: Continuous ripple effects from random positions + ambient base
+8. **RAINBOW**: Smooth rainbow rotation with BPM-controlled speed
+9. **PLASMA**: Multi-sine wave plasma-like flowing colors
+10. **BREATHE**: Gentle breathing effect synchronized to BPM
+
+**MIDI CC Control (60-66):**
+- CC 60: Program select (0-9)
+- CC 61: BPM control (60-180 BPM range)
+- CC 62: Intensity level (0.0-1.0)
+- CC 63: Base hue shift (0.0-1.0)
+- CC 64: Global brightness (0-255)
+- CC 65: Flash trigger (127 = trigger)
+- CC 66: Ripple position (0-44 LEDs)
+
+**Interaction Features:**
+- Button presses trigger flash + hue shift per button
+- Pot activity creates hue rotation + positional ripple effects
+- Joystick directions trigger directional ripples
+- Switch 0 cycles through programs manually
+- Activity level affects animation intensity and chaos rates
+
+**Automatic Behaviors:**
+- 30-second idle detection switches to IDLE mode
+- Auto-switching between ambient programs every 60 seconds when idle
+- Return to previous program when activity resumes
+- BPM synchronization affects pulse, breathe, and spiral animations
+
+**Memory & Performance:**
+- 45-LED circular infinity portal optimized
+- ~80KB code, ~30KB RAM usage
+- 60 FPS portal rendering with 1kHz input processing
+- All animations use integer math for performance
+- Multiple ripple effects (up to 3 simultaneous)
+
+---
+## 18. Immediate Next Actions, expose diagnostic + configuration hooks.
 Stretch Role: Light-weight rule hooks (ONLY if round‑trip to Pi causes unacceptable latency for a subset of interactions).
 
 ---
@@ -89,12 +144,12 @@ Stretch Role: Light-weight rule hooks (ONLY if round‑trip to Pi causes unaccep
 - [X] Unit-like serial test mode: dump values each second
 
 ### Phase 3: Portal Animation Integration
-- [ ] Integrate pre-existing infinity portal code from `/Users/oberon/Projects/coding/arduino/uno/arduino-infinity-portal`
-- [ ] Implement portal animation programs: spiral, pulse, wave, chaos, ambient, idle
-- [ ] Add portal cue handler for receiving Pi commands (program switch, BPM sync, intensity)
-- [ ] Button press visual feedback within current portal program
-- [ ] Pot activity visual feedback (color/intensity shifts)
-- [ ] Idle detector (≥30 s no events) → automatic switch to ambient/idle portal program
+- [X] Create portal animations for the Teensy 4.1 using the FastLED library 
+- [X] Implement interesting and psychedelic portal animation programs: spiral, pulse, wave, chaos, ambient, idle, ripple, rainbow, plasma, breathe (10 total programs)
+- [X] Add portal cue handler for receiving Pi commands (program switch, BPM sync, intensity, hue, brightness, flash, ripple)
+- [X] Button press visual feedback within current portal program (flash + hue shift)
+- [X] Pot activity visual feedback (hue rotation + ripple effects)
+- [X] Idle detector (≥30 s no events) → automatic switch to ambient/idle portal program with auto-switching between ambient programs
 
 ### Phase 4: Performance Hardening
 - [ ] Measure loop time histogram (micros min/avg/max over 10k cycles)

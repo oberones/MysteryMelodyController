@@ -91,14 +91,18 @@ constexpr uint8_t SWITCH_CCS[] = {
 constexpr uint8_t SWITCH_BINARY_CC = 50;
 
 // ===== PORTAL ANIMATION CONFIGURATION =====
-constexpr uint8_t PORTAL_PROGRAM_COUNT = 6;
+constexpr uint8_t PORTAL_PROGRAM_COUNT = 10;
 enum PortalProgram {
-    PORTAL_SPIRAL = 0,
-    PORTAL_PULSE = 1,
-    PORTAL_WAVE = 2,
-    PORTAL_CHAOS = 3,
-    PORTAL_AMBIENT = 4,
-    PORTAL_IDLE = 5
+    PORTAL_SPIRAL = 0,      // Rotating spiral patterns
+    PORTAL_PULSE = 1,       // Rhythmic pulsing from center
+    PORTAL_WAVE = 2,        // Flowing wave patterns
+    PORTAL_CHAOS = 3,       // Random chaotic patterns
+    PORTAL_AMBIENT = 4,     // Slow peaceful patterns
+    PORTAL_IDLE = 5,        // Minimal ambient mode
+    PORTAL_RIPPLE = 6,      // Ripple effects from interactions
+    PORTAL_RAINBOW = 7,     // Smooth rainbow rotation
+    PORTAL_PLASMA = 8,      // Plasma-like flowing colors
+    PORTAL_BREATHE = 9      // Gentle breathing effect
 };
 
 // Portal frame rate (Hz)

@@ -6,11 +6,13 @@
 #include "midi_out.h"
 #include "robust_midi_mapper.h"
 #include "oled_display.h"
+#include "portal_controller.h"
+#include "portal_cue_handler.h"
 
 // Forward declarations
 void portalStartupSequence();
-void updatePortal();
 void updateOledInputData();
+void handlePortalInteractions();
 
 // ===== GLOBAL VARIABLES =====
 CRGB leds[LED_COUNT];
@@ -29,6 +31,10 @@ RobustMidiMapper inputMapper(inputProcessor, midiOut);
 // OLED Display
 OledDisplay oledDisplay;
 
+// Phase 3: Portal Animation System
+PortalController portalController;
+PortalCueHandler portalCueHandler;
+
 // ===== SETUP FUNCTION =====
 void setup() {
     // Initialize Serial for debugging
@@ -36,7 +42,7 @@ void setup() {
     delay(1000);  // Give time for serial to initialize
     
     Serial.println("=== Mystery Melody Machine Teensy Firmware ===");
-    Serial.println("Phase 2: Robust Input Layer + MIDI + OLED");
+    Serial.println("Phase 3: Portal Animation System");
     Serial.printf("Firmware compiled: %s %s\n", __DATE__, __TIME__);
     #ifdef USB_MIDI
     Serial.println("USB Type: MIDI");
@@ -80,6 +86,18 @@ void setup() {
     FastLED.show();
     Serial.printf("FastLED initialized: %d LEDs on pin %d\n", LED_COUNT, LED_DATA_PIN);
     
+    // Initialize Phase 3 Portal Animation System
+    Serial.println("Initializing portal controller...");
+    portalController.begin(leds);
+    portalCueHandler.begin(&portalController);
+    
+    // Set initial portal program and parameters
+    portalController.setProgram(PORTAL_AMBIENT);  // Start with ambient
+    portalController.setBpm(120.0);
+    portalController.setIntensity(0.7);
+    portalController.setBaseHue(0.6);  // Nice blue-purple base
+    Serial.println("Portal system ready with 10 animation programs");
+    
     // Test MIDI functionality (only if MIDI is available)
     Serial.println("Testing MIDI enumeration...");
     #ifdef USB_MIDI
@@ -104,61 +122,151 @@ void setup() {
     Serial.println("=== Setup Complete ===");
     Serial.printf("Main loop target: %d Hz\n", SCAN_HZ);
     Serial.printf("Portal target: %d Hz\n", PORTAL_FPS);
-    Serial.println("Phase 2: Debouncing, smoothing, rate limiting, and OLED logging active");
+    Serial.println("Phase 3: Portal Animation System with 10 programs active");
     Serial.println("OLED controls: Button 0 = next mode, Button 1 = prev mode");
+    Serial.println("Portal MIDI CC: 60-66 for program, BPM, intensity, hue, brightness, flash, ripple");
     Serial.println("Entering main loop...");
 }
 
 // ===== PORTAL STARTUP SEQUENCE =====
 void portalStartupSequence() {
-    // Simple startup animation: sweep colors around the ring
-    for (int cycle = 0; cycle < 3; cycle++) {
-        for (int i = 0; i < LED_COUNT; i++) {
-            // Clear all LEDs
-            FastLED.clear();
-            
-            // Set current LED to a rotating hue
-            uint8_t hue = (i * 255 / LED_COUNT) + (cycle * 85);
-            leds[i] = CHSV(hue, 255, 128);
-            
-            // Set a few trailing LEDs for a comet effect
-            for (int j = 1; j <= 3 && i - j >= 0; j++) {
-                leds[i - j] = CHSV(hue, 255, 128 / (j + 1));
-            }
-            
+    Serial.println("Starting Portal Animation Showcase...");
+    
+    // Showcase each animation program briefly
+    uint8_t demoPrograms[] = {PORTAL_SPIRAL, PORTAL_PULSE, PORTAL_RAINBOW, PORTAL_WAVE, PORTAL_PLASMA};
+    
+    for (int p = 0; p < 5; p++) {
+        portalController.setProgram(demoPrograms[p]);
+        portalController.setIntensity(0.8);
+        portalController.setBpm(140);  // Energetic startup tempo
+        
+        Serial.printf("Demo: %d\n", demoPrograms[p]);
+        
+        // Run each program for 1 second
+        for (int frame = 0; frame < 60; frame++) {  // 60 frames at 60Hz = 1 second
+            portalController.update();
             FastLED.show();
-            delay(30);  // 30ms per step
+            delay(16);  // ~60 FPS
         }
     }
     
-    // Fade to black
-    for (int brightness = 128; brightness >= 0; brightness -= 4) {
-        FastLED.setBrightness(brightness);
-        FastLED.show();
-        delay(20);
+    // Final flash sequence
+    Serial.println("Startup flash sequence...");
+    for (int i = 0; i < 3; i++) {
+        portalController.triggerFlash();
+        for (int frame = 0; frame < 10; frame++) {
+            portalController.update();
+            FastLED.show();
+            delay(16);
+        }
+        delay(200);
     }
     
-    FastLED.setBrightness(LED_BRIGHTNESS_MAX);
-    FastLED.clear();
-    FastLED.show();
+    // Fade to ambient mode
+    Serial.println("Transitioning to ambient mode...");
+    portalController.setProgram(PORTAL_AMBIENT);
+    portalController.setIntensity(0.7);
+    portalController.setBpm(120);
+    portalController.setBaseHue(0.6);  // Nice blue-purple
     
     Serial.println("Portal startup sequence complete");
 }
 
-// ===== BASIC PORTAL ANIMATION =====
-void updatePortal() {
-    // Simple breathing effect for Phase 1
-    static uint32_t animationPhase = 0;
-    animationPhase += 2;
+// ===== PORTAL INTERACTION HANDLING =====
+void handlePortalInteractions() {
+    // Track input activity for idle detection
+    bool hasActivity = false;
     
-    uint8_t brightness = (sin8(animationPhase / 4) / 4) + 32;  // Gentle breathing
-    
-    for (int i = 0; i < LED_COUNT; i++) {
-        // Gentle blue breathing
-        leds[i] = CHSV(160, 200, brightness);
+    // Button press feedback - trigger flash on any button press
+    for (int i = 0; i < BUTTON_COUNT; i++) {
+        static bool lastButtonStates[10] = {false};
+        bool currentState = inputProcessor.getButtonState(i);
+        
+        if (currentState && !lastButtonStates[i]) {
+            // Button just pressed - trigger flash and color change
+            portalController.triggerFlash();
+            
+            // Shift hue slightly on each button press
+            float currentHue = (i * 0.1); // Different hue per button
+            portalController.setBaseHue(currentHue);
+            
+            hasActivity = true;
+            
+            #if DEBUG >= 2
+            Serial.printf("Button %d pressed - portal flash + hue shift\n", i);
+            #endif
+        }
+        lastButtonStates[i] = currentState;
     }
     
-    FastLED.show();
+    // Pot activity feedback - hue rotation based on pot movement
+    float totalPotActivity = 0.0;
+    for (int i = 0; i < POT_COUNT; i++) {
+        if (inputProcessor.getPotChanged(i)) {
+            hasActivity = true;
+            
+            // Get normalized pot value (0.0-1.0)
+            float potValue = inputProcessor.getPotMidiValue(i) / 127.0;
+            totalPotActivity += potValue;
+            
+            // Trigger ripple effect at position based on pot
+            uint8_t ripplePos = (uint8_t)(potValue * (LED_COUNT - 1));
+            portalController.triggerRipple(ripplePos);
+        }
+    }
+    
+    // Apply pot-based hue rotation
+    if (totalPotActivity > 0.0) {
+        float hueShift = fmod(totalPotActivity * 0.2, 1.0);  // Smooth hue changes
+        float currentHue = fmod(millis() * 0.0001 + hueShift, 1.0);  // Slow drift + pot influence
+        portalController.setBaseHue(currentHue);
+        
+        // Set activity level for animation intensity
+        portalController.setActivityLevel(min(1.0f, totalPotActivity / POT_COUNT));
+    }
+    
+    // Joystick interactions - trigger directional ripples
+    for (int dir = 0; dir < 4; dir++) {
+        static bool lastJoyStates[4] = {false};
+        bool currentState = inputProcessor.getJoystickPressed(dir);
+        
+        if (currentState && !lastJoyStates[dir]) {
+            // Calculate ripple position based on direction
+            uint8_t positions[] = {0, LED_COUNT/2, LED_COUNT/4, 3*LED_COUNT/4}; // Up, Down, Left, Right
+            portalController.triggerRipple(positions[dir]);
+            hasActivity = true;
+            
+            #if DEBUG >= 2
+            Serial.printf("Joystick %s - portal ripple at %d\n", 
+                         dir == 0 ? "UP" : dir == 1 ? "DOWN" : dir == 2 ? "LEFT" : "RIGHT",
+                         positions[dir]);
+            #endif
+        }
+        lastJoyStates[dir] = currentState;
+    }
+    
+    // Switch changes - program switching (optional)
+    if (SWITCH_COUNT > 0) {
+        static bool lastSwitchState = false;
+        bool currentSwitchState = inputProcessor.getSwitchState(0);  // Use first switch
+        
+        if (currentSwitchState != lastSwitchState) {
+            if (currentSwitchState) {
+                // Switch turned on - cycle to next program
+                uint8_t nextProgram = (portalController.getCurrentProgram() + 1) % PORTAL_PROGRAM_COUNT;
+                portalController.setProgram(nextProgram);
+                hasActivity = true;
+                
+                #if DEBUG >= 1
+                Serial.printf("Switch activated - portal program: %d\n", nextProgram);
+                #endif
+            }
+        }
+        lastSwitchState = currentSwitchState;
+    }
+    
+    // Update portal cue handler with activity status
+    portalCueHandler.setInputActivity(hasActivity);
 }
 
 // ===== MAIN LOOP =====
@@ -197,12 +305,21 @@ void loop() {
         // Update OLED with current input data
         updateOledInputData();
         
-        // Handle any incoming MIDI (for future portal cues)
+        // Phase 3: Handle portal interactions (button presses, pot changes)
+        handlePortalInteractions();
+        
+        // Handle any incoming MIDI (including portal cues)
         #ifdef USB_MIDI
         while (usbMIDI.read()) {
-            // Placeholder for portal cue handling
+            // Check if it's a portal control CC
+            if (usbMIDI.getType() == usbMIDI.ControlChange) {
+                portalCueHandler.handleMidiCC(usbMIDI.getData1(), usbMIDI.getData2());
+            }
         }
         #endif
+        
+        // Update portal cue handler (for idle detection, auto-switching)
+        portalCueHandler.update();
     }
     
     // OLED display update at ~20Hz (every 50ms)
@@ -220,7 +337,10 @@ void loop() {
     // Portal animation at ~60Hz
     if (portalFrameTimer >= PORTAL_FRAME_INTERVAL_US) {
         portalFrameTimer -= PORTAL_FRAME_INTERVAL_US;
-        updatePortal();
+        
+        // Phase 3: Update portal controller (handles all animations)
+        portalController.update();
+        FastLED.show();
     }
     
     // Built-in LED blink every second to show we're alive
