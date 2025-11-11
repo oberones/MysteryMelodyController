@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.0 (2025-11-11)
+
+### Feat
+
+- add serial communication method for raspi
+
 ## 0.4.0 (2025-09-25) - Phase 3: Portal Animation System
 
 ### 🎨 Major Features - Portal Animation Integration

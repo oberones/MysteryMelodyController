@@ -13,23 +13,32 @@ PortalCueHandler::PortalCueHandler() :
     timeSinceLastActivity(0),
     wasIdle(false),
     lastActiveProgram(PORTAL_AMBIENT),
-    autoSwitchTimer(0)
+    autoSwitchTimer(0),
+    bufferIndex(0),
+    lastMessageTime(0),
+    messagesReceived(0),
+    messagesValid(0),
+    messagesInvalid(0)
 {
 }
 
 void PortalCueHandler::begin(PortalController* controller) {
     portalController = controller;
     timeSinceLastActivity = 0;
+    resetSerialBuffer();
     
-    Serial.println("Portal Cue Handler initialized");
-    Serial.println("MIDI CC Commands:");
-    Serial.printf("  CC %d: Program (0-%d)\n", PORTAL_PROGRAM_CC, PORTAL_PROGRAM_COUNT-1);
-    Serial.printf("  CC %d: BPM (60-180)\n", PORTAL_BPM_CC);
-    Serial.printf("  CC %d: Intensity (0-127)\n", PORTAL_INTENSITY_CC);
-    Serial.printf("  CC %d: Base Hue (0-127)\n", PORTAL_HUE_CC);
-    Serial.printf("  CC %d: Brightness (0-127)\n", PORTAL_BRIGHTNESS_CC);
-    Serial.printf("  CC %d: Flash Trigger (127)\n", PORTAL_FLASH_CC);
-    Serial.printf("  CC %d: Ripple Position (0-44)\n", PORTAL_RIPPLE_CC);
+    Serial.println("Portal Cue Handler initialized with Serial Protocol");
+    Serial.printf("Serial baud rate: %lu\n", PORTAL_SERIAL_BAUD);
+    Serial.println("Serial Commands:");
+    Serial.println("  0x01: SET_PROGRAM (0-9)");
+    Serial.println("  0x02: SET_BPM (0-255 -> 60-180 BPM)");
+    Serial.println("  0x03: SET_INTENSITY (0-255)");
+    Serial.println("  0x04: SET_HUE (0-255)");
+    Serial.println("  0x05: SET_BRIGHTNESS (0-255)");
+    Serial.println("  0x06: TRIGGER_FLASH");
+    Serial.println("  0x07: TRIGGER_RIPPLE (position)");
+    Serial.println("  0x10: PING (keepalive)");
+    Serial.println("Legacy MIDI CC support still available");
 }
 
 void PortalCueHandler::handleMidiCC(uint8_t cc, uint8_t value) {
@@ -248,5 +257,249 @@ void PortalCueHandler::printStatus() {
         Serial.printf("Last Active Program: %s (%d)\n", 
                      PORTAL_PROGRAM_NAMES[lastActiveProgram], lastActiveProgram);
     }
+    Serial.printf("Serial Messages - RX: %lu, Valid: %lu, Invalid: %lu\n", 
+                 messagesReceived, messagesValid, messagesInvalid);
     Serial.println("====================");
+}
+
+// ===== NEW SERIAL PROTOCOL METHODS =====
+
+void PortalCueHandler::handleSerialMessage(const PortalMessage& message) {
+    if (!portalController) return;
+    
+    #if DEBUG >= 1
+    Serial.printf("Portal Serial: %s (0x%02X) = %d\n", 
+                 SerialPortalProtocol::getCommandName(message.command),
+                 static_cast<uint8_t>(message.command), message.value);
+    #endif
+    
+    switch (message.command) {
+        case PortalSerialCommand::SET_PROGRAM:
+            if (message.value < PORTAL_PROGRAM_COUNT) {
+                portalController->setProgram(message.value);
+                lastActiveProgram = message.value;
+                
+                #if DEBUG >= 1
+                Serial.printf("Portal program changed to: %s (%d)\n", 
+                             PORTAL_PROGRAM_NAMES[message.value], message.value);
+                #endif
+                
+                // Reset idle timer when program is manually changed
+                timeSinceLastActivity = 0;
+                wasIdle = false;
+                sendAck();
+            } else {
+                sendNak();
+            }
+            break;
+            
+        case PortalSerialCommand::SET_BPM:
+            {
+                float bpm = SerialPortalProtocol::mapToBpm(message.value);
+                portalController->setBpm(bpm);
+                
+                #if DEBUG >= 1
+                Serial.printf("Portal BPM set to: %.1f\n", bpm);
+                #endif
+                sendAck();
+            }
+            break;
+            
+        case PortalSerialCommand::SET_INTENSITY:
+            {
+                float intensity = SerialPortalProtocol::mapToNormalized(message.value);
+                portalController->setIntensity(intensity);
+                
+                #if DEBUG >= 1
+                Serial.printf("Portal intensity set to: %.2f\n", intensity);
+                #endif
+                sendAck();
+            }
+            break;
+            
+        case PortalSerialCommand::SET_HUE:
+            {
+                float hue = SerialPortalProtocol::mapToNormalized(message.value);
+                portalController->setBaseHue(hue);
+                
+                #if DEBUG >= 1
+                Serial.printf("Portal base hue set to: %.2f\n", hue);
+                #endif
+                sendAck();
+            }
+            break;
+            
+        case PortalSerialCommand::SET_BRIGHTNESS:
+            {
+                portalController->setBrightness(message.value);
+                
+                #if DEBUG >= 1
+                Serial.printf("Portal brightness set to: %d\n", message.value);
+                #endif
+                sendAck();
+            }
+            break;
+            
+        case PortalSerialCommand::TRIGGER_FLASH:
+            portalController->triggerFlash();
+            
+            #if DEBUG >= 1
+            Serial.println("Portal flash triggered");
+            #endif
+            sendAck();
+            break;
+            
+        case PortalSerialCommand::TRIGGER_RIPPLE:
+            {
+                uint8_t position = SerialPortalProtocol::mapToLedPosition(message.value, LED_COUNT);
+                portalController->triggerRipple(position);
+                
+                #if DEBUG >= 1
+                Serial.printf("Portal ripple triggered at position: %d\n", position);
+                #endif
+                sendAck();
+            }
+            break;
+            
+        case PortalSerialCommand::PING:
+            sendPong();
+            break;
+            
+        case PortalSerialCommand::RESET:
+            // Reset to default state
+            portalController->setProgram(PORTAL_AMBIENT);
+            portalController->setBpm(120.0);
+            portalController->setIntensity(0.7);
+            portalController->setBaseHue(0.6);
+            portalController->setBrightness(LED_BRIGHTNESS_MAX);
+            
+            #if DEBUG >= 1
+            Serial.println("Portal reset to default state");
+            #endif
+            sendAck();
+            break;
+            
+        default:
+            #if DEBUG >= 1
+            Serial.printf("Unknown serial command: 0x%02X\n", static_cast<uint8_t>(message.command));
+            #endif
+            sendNak();
+            break;
+    }
+}
+
+void PortalCueHandler::processSerialInput() {
+    while (Serial.available()) {
+        uint8_t byte = Serial.read();
+        
+        // Handle buffer overflow
+        if (bufferIndex >= PORTAL_SERIAL_BUFFER_SIZE) {
+            #if DEBUG >= 2
+            Serial.println("Serial buffer overflow - resetting");
+            #endif
+            resetSerialBuffer();
+        }
+        
+        serialBuffer[bufferIndex++] = byte;
+        lastMessageTime = 0;
+        
+        // Try to parse message if we have minimum bytes
+        if (bufferIndex >= PORTAL_MSG_MIN_SIZE) {
+            if (parseSerialMessage()) {
+                resetSerialBuffer();
+            }
+        }
+    }
+    
+    // Timeout incomplete messages
+    if (bufferIndex > 0 && lastMessageTime > PORTAL_SERIAL_TIMEOUT_MS) {
+        #if DEBUG >= 2
+        Serial.println("Serial message timeout - resetting buffer");
+        #endif
+        resetSerialBuffer();
+    }
+}
+
+bool PortalCueHandler::parseSerialMessage() {
+    // Look for start byte
+    int startIndex = -1;
+    for (int i = 0; i < bufferIndex; i++) {
+        if (serialBuffer[i] == PORTAL_MSG_START_BYTE) {
+            startIndex = i;
+            break;
+        }
+    }
+    
+    if (startIndex == -1) {
+        // No start byte found - clear buffer
+        resetSerialBuffer();
+        return false;
+    }
+    
+    // Shift buffer to start at start byte
+    if (startIndex > 0) {
+        for (int i = 0; i < bufferIndex - startIndex; i++) {
+            serialBuffer[i] = serialBuffer[i + startIndex];
+        }
+        bufferIndex -= startIndex;
+    }
+    
+    // Check if we have a complete message
+    if (bufferIndex >= PORTAL_MSG_MIN_SIZE && 
+        serialBuffer[PORTAL_MSG_MIN_SIZE - 1] == PORTAL_MSG_END_BYTE) {
+        
+        // Parse the message
+        PortalMessage message = PortalMessage::fromBytes(serialBuffer);
+        messagesReceived++;
+        
+        if (message.isValid()) {
+            messagesValid++;
+            handleSerialMessage(message);
+            return true;
+        } else {
+            messagesInvalid++;
+            #if DEBUG >= 2
+            Serial.printf("Invalid message checksum: got 0x%02X, expected 0x%02X\n",
+                         message.checksum, 
+                         PortalMessage::calculateChecksum(message.command, message.value));
+            #endif
+            sendNak();
+        }
+    }
+    
+    return false;
+}
+
+void PortalCueHandler::resetSerialBuffer() {
+    bufferIndex = 0;
+    memset(serialBuffer, 0, PORTAL_SERIAL_BUFFER_SIZE);
+}
+
+void PortalCueHandler::sendMessage(const PortalMessage& message) {
+    uint8_t buffer[5];
+    message.toBytes(buffer);
+    Serial.write(buffer, 5);
+    Serial.flush();
+}
+
+void PortalCueHandler::sendAck() {
+    PortalMessage ack(PortalSerialCommand::ACK, 0);
+    sendMessage(ack);
+}
+
+void PortalCueHandler::sendNak() {
+    PortalMessage nak(PortalSerialCommand::NAK, 0);
+    sendMessage(nak);
+}
+
+void PortalCueHandler::sendPong() {
+    PortalMessage pong(PortalSerialCommand::PONG, 0);
+    sendMessage(pong);
+}
+
+void PortalCueHandler::sendStatus() {
+    if (!portalController) return;
+    
+    PortalMessage status(PortalSerialCommand::STATUS, portalController->getCurrentProgram());
+    sendMessage(status);
 }
