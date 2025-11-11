@@ -8,6 +8,7 @@
 #include "oled_display.h"
 #include "portal_controller.h"
 #include "portal_cue_handler.h"
+#include "serial_portal_protocol.h"
 
 // Forward declarations
 void portalStartupSequence();
@@ -37,15 +38,16 @@ PortalCueHandler portalCueHandler;
 
 // ===== SETUP FUNCTION =====
 void setup() {
-    // Initialize Serial for debugging
-    Serial.begin(115200);
+    // Initialize Serial for debugging and Pi communication
+    Serial.begin(PORTAL_SERIAL_BAUD);
     delay(1000);  // Give time for serial to initialize
     
     Serial.println("=== Mystery Melody Machine Teensy Firmware ===");
-    Serial.println("Phase 3: Portal Animation System");
+    Serial.println("Phase 3: Portal Animation System + Serial Protocol");
     Serial.printf("Firmware compiled: %s %s\n", __DATE__, __TIME__);
+    Serial.printf("Serial Protocol: %lu baud for Pi communication\n", PORTAL_SERIAL_BAUD);
     #ifdef USB_MIDI
-    Serial.println("USB Type: MIDI");
+    Serial.println("USB Type: MIDI + Serial");
     #else
     Serial.println("USB Type: Serial (Debug Mode)");
     #endif
@@ -124,7 +126,7 @@ void setup() {
     Serial.printf("Portal target: %d Hz\n", PORTAL_FPS);
     Serial.println("Phase 3: Portal Animation System with 10 programs active");
     Serial.println("OLED controls: Button 0 = next mode, Button 1 = prev mode");
-    Serial.println("Portal MIDI CC: 60-66 for program, BPM, intensity, hue, brightness, flash, ripple");
+    Serial.println("Portal Control: Serial protocol (primary) + legacy MIDI CC (60-66)");
     Serial.println("Entering main loop...");
 }
 
@@ -308,10 +310,13 @@ void loop() {
         // Phase 3: Handle portal interactions (button presses, pot changes)
         handlePortalInteractions();
         
-        // Handle any incoming MIDI (including portal cues)
+        // Handle incoming serial messages for portal cues
+        portalCueHandler.processSerialInput();
+        
+        // Handle any incoming MIDI (legacy support)
         #ifdef USB_MIDI
         while (usbMIDI.read()) {
-            // Check if it's a portal control CC
+            // Check if it's a portal control CC (legacy MIDI support)
             if (usbMIDI.getType() == usbMIDI.ControlChange) {
                 portalCueHandler.handleMidiCC(usbMIDI.getData1(), usbMIDI.getData2());
             }

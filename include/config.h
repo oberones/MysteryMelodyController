@@ -73,7 +73,7 @@ constexpr uint8_t BUTTON_NOTES[] = {
 
 // MIDI CC mapping for potentiometers
 constexpr uint8_t POT_CCS[] = {
-    1, 2, 3, 4, 5, 6  // CC 1-6 for the 6 pots
+    1, 2, 3, 4  // CC 1-4 for the 4 pots
 };
 
 // MIDI CC mapping for joystick directions
@@ -106,8 +106,20 @@ enum PortalProgram {
 };
 
 // Portal frame rate (Hz)
-constexpr uint8_t PORTAL_FPS = 60;
+constexpr uint8_t  PORTAL_FPS = 60;
 constexpr uint32_t PORTAL_FRAME_INTERVAL_US = 1000000 / PORTAL_FPS;
+
+// ===== SERIAL PORTAL COMMUNICATION =====
+// Serial communication parameters for Pi <-> Teensy portal control
+constexpr uint32_t PORTAL_SERIAL_BAUD = 115200;
+constexpr uint16_t PORTAL_SERIAL_TIMEOUT_MS = 100;
+constexpr uint8_t  PORTAL_SERIAL_BUFFER_SIZE = 64;
+
+// Portal cue message format constants
+constexpr uint8_t PORTAL_MSG_START_BYTE = 0xAA;  // Message start marker
+constexpr uint8_t PORTAL_MSG_END_BYTE = 0x55;    // Message end marker
+constexpr uint8_t PORTAL_MSG_MIN_SIZE = 5;       // Start + Type + Value + Checksum + End
+constexpr uint8_t PORTAL_MSG_MAX_SIZE = 8;       // Maximum message size
 
 // ===== OLED DISPLAY CONFIGURATION =====
 // Display update rate (Hz) - keep low to avoid interference with main loop

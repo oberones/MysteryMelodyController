@@ -348,9 +348,9 @@ void PortalController::clearLeds() {
 void PortalController::applyInteractionEffects() {
     // Apply flash effect
     if (flashActive) {
-        if (flashTimer < 100) {  // 100ms flash duration
-            uint8_t flashBrightness = mapFloat(flashTimer, 0, 100, flashIntensity, 0);
-            
+        if (flashTimer < 200) {  // 200ms flash duration
+            uint8_t flashBrightness = mapFloat(flashTimer, 0, 200, flashIntensity, 0);
+
             for (int i = 0; i < LED_COUNT; i++) {
                 leds[i] += CRGB(flashBrightness, flashBrightness, flashBrightness);
             }

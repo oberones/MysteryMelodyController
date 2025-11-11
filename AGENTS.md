@@ -7,7 +7,8 @@ The Mystery Melody Machine is an interactive musical device that combines physic
 - Low-latency input scanning and debouncing (≤3ms worst case)
 - MIDI event generation and transmission
 - RGB LED "infinity portal" animations
-- Communication with Raspberry Pi for high-level control
+- Serial communication with Raspberry Pi for portal control (primary)
+- Legacy MIDI CC support for backward compatibility
 
 ### Architecture Philosophy
 - **Real-time first**: Prioritize deterministic timing and low-latency response
@@ -28,8 +29,6 @@ The Mystery Melody Machine is an interactive musical device that combines physic
 ### I/O Configuration
 ```cpp
 // Digital Inputs (with pullups)
-Buttons:     Pins 2-11   (10 buttons)
-Joystick:    Pins 12-15  (4 directions: Up/Down/Left/Right)
 Switches:    Pins 16-18  (3 switches)
 
 // Analog Inputs
@@ -43,9 +42,7 @@ Built-in LED: Pin 13     (heartbeat indicator)
 ### MIDI Mapping
 ```cpp
 Channel: 1 (primary), Channel 2 (reserved)
-Buttons: Notes 60-69 (C4-A4), Velocity 100
 Pots:    CC 1-6
-Joystick: CC 10-13 (Up/Down/Left/Right)
 Switches: CC 20-22
 ```
 
@@ -66,7 +63,7 @@ Switches: CC 20-22
 
 #### 3. Portal Animation System
 - **PortalController**: Main animation engine (60Hz target)
-- **PortalCues**: Pi→Teensy command handling
+- **PortalCues**: Pi→Teensy command handling via serial protocol (primary) + MIDI CC (legacy)
 - Programs: spiral, pulse, wave, chaos, ambient, idle
 
 #### 4. Timing & Diagnostics
@@ -84,7 +81,8 @@ void loop() {
     processSwitches();         // State changes
     processPots();             // Smoothing & CC
     updateIdleTimer();         // Activity tracking
-    handlePortalCues();        // Pi commands
+    handleSerialPortalCues();  // Pi serial commands (primary)
+    handleMidiPortalCues();    // Legacy MIDI CC support
   }
   
   // 60Hz portal rendering
@@ -355,20 +353,33 @@ pio device monitor
 ## Integration Patterns
 
 ### Pi↔Teensy Communication
+
+**Serial Protocol (Primary)**: Binary protocol for reliable, low-latency communication
 ```cpp
-// Portal cue protocol (via Serial or MIDI SysEx)
-struct PortalCue {
-    enum Type : uint8_t {
-        SET_PROGRAM = 0x01,    // Switch animation program
-        SET_BPM = 0x02,        // Sync to sequencer BPM
-        SET_INTENSITY = 0x03,  // Activity level
-        SET_HUE = 0x04         // Color shift
-    };
-    
-    Type type;
-    uint8_t value;
-    uint16_t checksum;
+// Message Format: [START][COMMAND][VALUE][CHECKSUM][END] = 5 bytes
+// START: 0xAA, END: 0x55, CHECKSUM: XOR of COMMAND and VALUE
+
+enum class PortalSerialCommand : uint8_t {
+    SET_PROGRAM = 0x01,      // Switch animation program (0-9)
+    SET_BPM = 0x02,          // Set BPM (0-255 -> 60-180 BPM)
+    SET_INTENSITY = 0x03,    // Set intensity (0-255 -> 0.0-1.0)
+    SET_HUE = 0x04,          // Set base hue (0-255 -> 0.0-1.0)
+    SET_BRIGHTNESS = 0x05,   // Set brightness (0-255)
+    TRIGGER_FLASH = 0x06,    // Trigger flash effect
+    TRIGGER_RIPPLE = 0x07,   // Trigger ripple at position (0-255)
+    PING = 0x10,             // Ping/keepalive (responds with PONG)
+    RESET = 0x11,            // Reset to default state
+    // Response commands (Teensy -> Pi)
+    PONG = 0x20, ACK = 0x21, NAK = 0x22, STATUS = 0x23
 };
+
+// Example: Set program to SPIRAL (program 0)
+// Message: [0xAA][0x01][0x00][0x01][0x55]
+```
+
+**Legacy MIDI CC Support**: Maintained for backward compatibility
+```cpp
+// MIDI CC 60-66 for program, BPM, intensity, hue, brightness, flash, ripple
 ```
 
 ### Configuration Management
